@@ -16,6 +16,7 @@ use libp2p_bitswap::{Bitswap, BitswapEvent};
 use libipld_core::cid::Cid;
 use libipld_core::cid::Codec;
 use libipld_core::multihash::Sha2_256;
+use libp2p::mdns::service::{MdnsPacket, MdnsService};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Block {
@@ -63,7 +64,7 @@ fn mk_transport() -> (PeerId, Boxed<(PeerId, StreamMuxerBox), Error>) {
 async fn main() {
     let (peer1_id, trans) = mk_transport();
     let mut swarm1 = Swarm::new(trans, Bitswap::new(), peer1_id.clone());
-
+    let mut multi_addr = Swarm::listeners(&swarm1);
     let (peer2_id, trans) = mk_transport();
     let mut swarm2 = Swarm::new(trans, Bitswap::new(), peer2_id.clone());
 
@@ -84,8 +85,10 @@ async fn main() {
         for l in Swarm::listeners(&swarm1) {
             tx.send(l.clone()).await.unwrap();
         }
+        let mut service = MdnsService::new();
 
         loop {
+            let (srv, packet) = service.next().await;
             match swarm1.next().await {
                 BitswapEvent::ReceivedWant(peer_id, cid, _) => {
                     println!("P1: Recived Want from {}", peer_id);
@@ -96,12 +99,23 @@ async fn main() {
                 }
                 _ => {}
             }
+            match packet {
+                MdnsPacket::Response(response) => {
+                    for peer in response.discovered_peers() {
+                        for addr in peer.addresses() {
+                            Swarm::dial_addr(&mut swarm1, addr.clone());
+                        }
+                    }
+
+                }
+            }
+            service = srv
         }
     };
 
 
     let peer2 = async move {
-        Swarm::dial_addr(&mut swarm2, rx.x.await.unwrap()).unwrap();
+
         swarm2.want_block(cid, 1000);
 
         loop {
@@ -115,6 +129,6 @@ async fn main() {
         }
     };
 
-    future::join(peer1, peer2);
+    future::select(Box::pin(peer1), Box::pin(peer2)).await.factor_first().0;
 
 }
