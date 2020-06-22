@@ -12,11 +12,13 @@ use libp2p::{PeerId, Swarm, Transport, Multiaddr};
 use std::io::{Error, ErrorKind};
 use std::time::Duration;
 use async_std::prelude::*;
+use async_std::{io, task};
 use libp2p_bitswap::{Bitswap, BitswapEvent};
 use libipld_core::cid::Cid;
 use libipld_core::cid::Codec;
 use libipld_core::multihash::Sha2_256;
 use libp2p::mdns::service::{MdnsPacket, MdnsService};
+use std::{task::{Context, Poll}};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Block {
@@ -106,11 +108,11 @@ async fn main() {
                             Swarm::dial_addr(&mut swarm1, addr.clone());
                         }
                     }
-
+                    service = srv
                 }
             }
-            service = srv
         }
+        
     };
 
 
@@ -129,6 +131,24 @@ async fn main() {
         }
     };
 
-    future::select(Box::pin(peer1), Box::pin(peer2)).await.factor_first().0;
+    let mut stdin = io::BufReader::new(io::stdin()).lines();
+
+    task::block_on(future::poll_fn(move |cx: &mut Context| {
+        loop {
+            match stdin.try_poll_next_unpin(cx)? {
+                Poll::Ready(Some(line)) => swarm.publish(&topic, line.as_bytes()),
+                Poll::Ready(None) => panic!("Stdin closed"),
+                Poll::Pending => break,
+            };
+        }
+    }))
+
+
+
+
+
+
+
+    //future::select(Box::pin(peer1), Box::pin(peer2)).await.factor_first().0;
 
 }
