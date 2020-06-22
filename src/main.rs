@@ -11,7 +11,6 @@ use libp2p::yamux::Config as YamuxConfig;
 use libp2p::{PeerId, Swarm, Transport, Multiaddr};
 use std::io::{Error, ErrorKind};
 use std::time::Duration;
-use async_std::prelude::*;
 use async_std::{io, task};
 use libp2p_bitswap::{Bitswap, BitswapEvent};
 use libipld_core::cid::Cid;
@@ -131,15 +130,22 @@ async fn main() {
         }
     };
 
+    if let Some(to_dial) = std::env::args().nth(1) {
+        let dialing = to_dial.clone();
+        match to_dial.parse() {
+            Ok(to_dial) => match libp2p::Swarm::dial_addr(&mut swarm1, to_dial) {
+                Ok(_) => println!("Dialed {:?}", dialing),
+                Err(e) => println!("Dial {:?} failed: {:?}", dialing, e),
+            },
+            Err(err) => println!("Failed to parse address to dial: {:?}", err),
+        }
+    }
+
     let mut stdin = io::BufReader::new(io::stdin()).lines();
 
     task::block_on(future::poll_fn(move |cx: &mut Context| {
         loop {
-            match stdin.try_poll_next_unpin(cx)? {
-                Poll::Ready(Some(line)) => swarm.publish(&topic, line.as_bytes()),
-                Poll::Ready(None) => panic!("Stdin closed"),
-                Poll::Pending => break,
-            };
+            
         }
     }))
 
