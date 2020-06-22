@@ -16,6 +16,7 @@ use libp2p_bitswap::{Bitswap, BitswapEvent};
 use libipld_core::cid::Cid;
 use libipld_core::cid::Codec;
 use libipld_core::multihash::Sha2_256;
+use libp2p::mdns::service::{MdnsPacket, MdnsService};
 use std::{task::{Context, Poll}};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -62,10 +63,10 @@ fn mk_transport() -> (PeerId, Boxed<(PeerId, StreamMuxerBox), Error>) {
 
 #[async_std::main]
 async fn main() {
-    let (peer1_id, trans) = mk_transport();
-    let mut swarm1 = Swarm::new(trans, Bitswap::new(), peer1_id.clone());
+    let (peer2_id, trans) = mk_transport();
+    let mut swarm2 = Swarm::new(trans, Bitswap::new(), peer2_id.clone());
 
-    Swarm::listen_on(&mut swarm1, "/ip4/127.0.0.1/tcp/0".parse().unwrap()).unwrap();
+    Swarm::listen_on(&mut swarm2, "/ip4/127.0.0.1/tcp/0".parse().unwrap()).unwrap();
 
 
     let Block {
@@ -73,11 +74,11 @@ async fn main() {
         data: data_orig,
     } = new_block(b"Hey bro");
     let cid = cid_orig.clone();
-    
+
     if let Some(to_dial) = std::env::args().nth(1) {
         let dialing = to_dial.clone();
         match to_dial.parse() {
-            Ok(to_dial) => match libp2p::Swarm::dial_addr(&mut swarm1, to_dial) {
+            Ok(to_dial) => match libp2p::Swarm::dial_addr(&mut swarm2, to_dial) {
                 Ok(_) => println!("Dialed {:?}", dialing),
                 Err(e) => println!("Dial {:?} failed: {:?}", dialing, e),
             },
@@ -86,19 +87,22 @@ async fn main() {
     }
 
 
+
     let mut stdin = io::BufReader::new(io::stdin()).lines();
     let mut listening = false;
 
     task::block_on(future::poll_fn(move |cx: &mut Context| {
 
+        swarm2.want_block(cid_orig.clone(), 1000);
+        
 
         loop {
-            match swarm1.poll_next_unpin(cx) {
+            match swarm2.poll_next_unpin(cx) {
                 Poll::Ready(Some(bitswap_event)) => match bitswap_event {
                     BitswapEvent::ReceivedWant(peer_id, cid, _) => {
                         println!("P1: Recived Want from {}", peer_id);
                         if &cid == &cid_orig {
-                            swarm1.send_block(&peer_id, cid_orig.clone(), data_orig.clone());
+                            swarm2.send_block(&peer_id, cid_orig.clone(), data_orig.clone());
                             println!("P1: Sending Block to peer {}", peer_id);
                         }
                     },
@@ -116,7 +120,7 @@ async fn main() {
         }
 
         if !listening {
-            for addr in libp2p::Swarm::listeners(&swarm1) {
+            for addr in libp2p::Swarm::listeners(&swarm2) {
                 println!("Listening on {:?}", addr);
                 listening = true;
             }

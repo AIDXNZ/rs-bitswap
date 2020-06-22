@@ -16,6 +16,7 @@ use libp2p_bitswap::{Bitswap, BitswapEvent};
 use libipld_core::cid::Cid;
 use libipld_core::cid::Codec;
 use libipld_core::multihash::Sha2_256;
+use libp2p::mdns::service::{MdnsPacket, MdnsService};
 use std::{task::{Context, Poll}};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -64,7 +65,10 @@ fn mk_transport() -> (PeerId, Boxed<(PeerId, StreamMuxerBox), Error>) {
 async fn main() {
     let (peer1_id, trans) = mk_transport();
     let mut swarm1 = Swarm::new(trans, Bitswap::new(), peer1_id.clone());
+    let (peer2_id, trans) = mk_transport();
+    let mut swarm2 = Swarm::new(trans, Bitswap::new(), peer2_id.clone());
 
+    let (mut tx, mut rx) = mpsc::channel::<Multiaddr>(1);
     Swarm::listen_on(&mut swarm1, "/ip4/127.0.0.1/tcp/0".parse().unwrap()).unwrap();
 
 
@@ -73,24 +77,39 @@ async fn main() {
         data: data_orig,
     } = new_block(b"Hey bro");
     let cid = cid_orig.clone();
-    
-    if let Some(to_dial) = std::env::args().nth(1) {
-        let dialing = to_dial.clone();
-        match to_dial.parse() {
-            Ok(to_dial) => match libp2p::Swarm::dial_addr(&mut swarm1, to_dial) {
-                Ok(_) => println!("Dialed {:?}", dialing),
-                Err(e) => println!("Dial {:?} failed: {:?}", dialing, e),
-            },
-            Err(err) => println!("Failed to parse address to dial: {:?}", err),
-        }
-    }
 
+
+
+    let peer2 = async move {
+
+        swarm2.want_block(cid, 1000);
+
+        loop {
+            match swarm2.next().await {
+                BitswapEvent::ReceivedBlock(peer_id, cid, data) => {
+                    println!("P2: Recieved Block {} from peer {:?}", cid.clone(), peer_id);
+
+                },
+                _ => {}
+            }
+        }
+    };
 
     let mut stdin = io::BufReader::new(io::stdin()).lines();
     let mut listening = false;
 
     task::block_on(future::poll_fn(move |cx: &mut Context| {
 
+        if let Some(to_dial) = std::env::args().nth(1) {
+            let dialing = to_dial.clone();
+            match to_dial.parse() {
+                Ok(to_dial) => match libp2p::Swarm::dial_addr(&mut swarm1, to_dial) {
+                    Ok(_) => println!("Dialed {:?}", dialing),
+                    Err(e) => println!("Dial {:?} failed: {:?}", dialing, e),
+                },
+                Err(err) => println!("Failed to parse address to dial: {:?}", err),
+            }
+        }
 
         loop {
             match swarm1.poll_next_unpin(cx) {
