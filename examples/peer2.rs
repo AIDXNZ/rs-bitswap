@@ -90,10 +90,10 @@ async fn main() {
 
     let mut stdin = io::BufReader::new(io::stdin()).lines();
     let mut listening = false;
+    swarm2.want_block(cid_orig.clone(), 100);
 
     task::block_on(future::poll_fn(move |cx: &mut Context| {
 
-        swarm2.want_block(cid_orig.clone(), 1000);
         
 
         loop {
@@ -106,13 +106,14 @@ async fn main() {
                             println!("P1: Sending Block to peer {}", peer_id);
                         }
                     },
-                    BitswapEvent::ReceivedBlock(peer_id, cid, data) => {
+                    BitswapEvent::ReceivedBlock(peer_id, mut cid, data) => {
                         println!("P1: Recived Block from {}", peer_id);
                         println!("P1: Cid {}", cid);
+                        swarm2.cancel_block(&cid);
                     },
-                    BitswapEvent::ReceivedCancel(peer_id, cid) => (
-                        println!("P1: Recived Cancel {} from {}", cid, peer_id)
-                    )
+                    BitswapEvent::ReceivedCancel(peer_id, cid) => {
+                        println!("P1: Recived Cancel {} from {}", cid, peer_id);
+                    }
                 },
                 Poll::Ready(None) | Poll::Pending => break,
                 _ => {}

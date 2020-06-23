@@ -97,18 +97,17 @@ async fn main() {
                 Poll::Ready(Some(bitswap_event)) => match bitswap_event {
                     BitswapEvent::ReceivedWant(peer_id, cid, _) => {
                         println!("P1: Recived Want from {}", peer_id);
-                        if &cid == &cid_orig {
-                            swarm1.send_block(&peer_id, cid_orig.clone(), data_orig.clone());
-                            println!("P1: Sending Block to peer {}", peer_id);
-                        }
+                        swarm1.send_block(&peer_id, cid_orig.clone(), data_orig.clone());
+                        println!("P1: Sending Block to peer {}", peer_id);
+                        
                     },
                     BitswapEvent::ReceivedBlock(peer_id, cid, data) => {
                         println!("P1: Recived Block from {}", peer_id);
                         println!("P1: Cid {}", cid);
                     },
-                    BitswapEvent::ReceivedCancel(peer_id, cid) => (
-                        println!("P1: Recived Cancel {} from {}", cid, peer_id)
-                    )
+                    BitswapEvent::ReceivedCancel(peer_id, cid) => {
+                        println!("P1: Recived Cancel {} from {}", cid, peer_id);
+                    }
                 },
                 Poll::Ready(None) | Poll::Pending => break,
                 _ => {}
