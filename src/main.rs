@@ -17,6 +17,9 @@ use libipld_core::cid::Cid;
 use libipld_core::cid::Codec;
 use libipld_core::multihash::Sha2_256;
 use std::{task::{Context, Poll}};
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Block {
@@ -60,12 +63,12 @@ fn mk_transport() -> (PeerId, Boxed<(PeerId, StreamMuxerBox), Error>) {
     (peer_id, transport)
 }
 
-#[async_std::main]
-async fn main() {
+
+fn main() {
     let (peer1_id, trans) = mk_transport();
     let mut swarm1 = Swarm::new(trans, Bitswap::new(), peer1_id.clone());
 
-    Swarm::listen_on(&mut swarm1, "/ip4/127.0.0.1/tcp/0".parse().unwrap()).unwrap();
+    Swarm::listen_on(&mut swarm1, "/ip4/127.0.0.1/tcp/62891".parse().unwrap()).unwrap();
 
 
     let Block {
