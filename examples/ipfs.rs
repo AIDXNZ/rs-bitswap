@@ -91,19 +91,20 @@ async fn main() {
         }
     }
 
+    let mut cid1 = Cid::from_str("bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m").unwrap();
 
     let mut stdin = io::BufReader::new(io::stdin()).lines();
     let mut listening = false;
-    swarm2.want_block(cid_orig.clone(), 100);
+    swarm2.want_block(cid1.clone(), 100);
 
     task::block_on(future::poll_fn(move |cx: &mut Context| {
         loop {
             match swarm2.poll_next_unpin(cx) {
                 Poll::Ready(Some(bitswap_event)) => match bitswap_event {
                     BitswapEvent::ReceivedWant(peer_id, cid, _) => {
-                        println!("P2: Recived Want from {}", peer_id);
+                        println!("P1: Recived Want from {}", peer_id);
                         swarm2.send_block(&peer_id, cid_orig.clone(), data_orig.clone());
-                        println!("P2: Sending Block to peer {}", peer_id);
+                        println!("P1: Sending Block to peer {}", peer_id);
                     }
                     BitswapEvent::ReceivedBlock(peer_id, cid, data) => {
                         println!("P1: Recived Block from {}", peer_id);
@@ -131,9 +132,4 @@ async fn main() {
     }))
 
     //future::select(Box::pin(peer1), Box::pin(peer2)).await.factor_first().0;
-}
-
-
-fn handle_want(arg: BitswapEvent) {
-    
 }

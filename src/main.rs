@@ -100,8 +100,10 @@ fn main() {
                 Poll::Ready(Some(bitswap_event)) => match bitswap_event {
                     BitswapEvent::ReceivedWant(peer_id, cid, _) => {
                         println!("P1: Recived Want from {}", peer_id);
-                        swarm1.send_block(&peer_id, cid_orig.clone(), data_orig.clone());
-                        println!("P1: Sending Block to peer {}", peer_id);
+                        if cid == cid_orig.clone() {
+                            swarm1.send_block(&peer_id, cid_orig.clone(), data_orig.clone());
+                            println!("P1: Sending Block to peer {}", peer_id);
+                        }
                         
                     },
                     BitswapEvent::ReceivedBlock(peer_id, cid, data) => {
@@ -127,13 +129,6 @@ fn main() {
         Poll::Pending
         
     }))
-
-
-
-
-
-
-
     //future::select(Box::pin(peer1), Box::pin(peer2)).await.factor_first().0;
 
 }
