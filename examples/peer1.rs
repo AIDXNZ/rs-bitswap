@@ -68,7 +68,7 @@ fn main() {
     let (peer1_id, trans) = mk_transport();
     let mut swarm1 = Swarm::new(trans, Bitswap::new(), peer1_id.clone());
 
-    Swarm::listen_on(&mut swarm1, "/ip4/127.0.0.1/tcp/62891".parse().unwrap()).unwrap();
+    Swarm::listen_on(&mut swarm1, "/ip4/0.0.0.0/tcp/62891".parse().unwrap()).unwrap();
 
 
     let Block {

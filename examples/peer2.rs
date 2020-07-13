@@ -1,7 +1,4 @@
-use std::str::FromStr;
 use async_std::{io, task};
-use futures::channel::mpsc;
-use futures::future::join;
 use futures::prelude::*;
 use libipld_core::cid::Cid;
 use libipld_core::cid::Codec;
@@ -72,13 +69,15 @@ async fn main() {
     let bitswap = Bitswap::new();
     let mut swarm2 = Swarm::new(trans, bitswap, peer2_id.clone());
 
-    Swarm::listen_on(&mut swarm2, "/ip4/127.0.0.1/tcp/0".parse().unwrap()).unwrap();
+    Swarm::listen_on(&mut swarm2, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
 
     let Block {
         cid: cid_orig,
         data: data_orig,
     } = new_block(b"Hey bro");
     let cid = cid_orig.clone();
+
+    Swarm::dial_addr(&mut swarm2, "/ip4/127.0.0.1/tcp/62891".parse().unwrap()).unwrap();
 
     if let Some(to_dial) = std::env::args().nth(1) {
         let dialing = to_dial.clone();

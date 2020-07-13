@@ -94,7 +94,9 @@ fn main() {
 
     task::block_on(future::poll_fn(move |cx: &mut Context| {
 
-
+        for peer in swarm1.peers() {
+            println!("{:?}", peer)
+        }
         loop {
             match swarm1.poll_next_unpin(cx) {
                 Poll::Ready(Some(bitswap_event)) => match bitswap_event {
